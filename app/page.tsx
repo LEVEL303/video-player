@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Play, Pause, Volume2, VolumeX, RotateCcw, RotateCw } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, RotateCcw, RotateCw, SkipBack, SkipForward } from "lucide-react";
+
+const videoList = [
+    {title: "video1", src: "/videos/video1.mp4"},
+    {title: "video2", src: "/videos/video2.mp4"},
+    {title: "video3", src: "/videos/video3.mp4"},
+];
 
 export default function Home() {
     const [isPlaying, setIsPlaying] = useState(false);
@@ -12,6 +18,9 @@ export default function Home() {
     const [progress, setProgress] = useState(0);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
+    const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+
+    const currentVideo = videoList[currentVideoIndex];
     
     const videoRef = useRef(null);
     const isSeeking = useRef(false);
@@ -33,24 +42,25 @@ export default function Home() {
         video.load();
         setCurrentTime(0);
         setProgress(0);
+
         if (isPlaying) {
             video.play();
         }
-        
-        const setVideoData = () => {
+
+        const setAudioData = () => {
             setDuration(video.duration);
         };
 
         if (video.readyState > 0) {
-            setVideoData();
+            setAudioData();
         } else {
-            video.addEventListener('loadedmetadata', setVideoData);
+            video.addEventListener('loadedmetadata', setAudioData);
         }
 
         return () => {
-            video.removeEventListener('loadedmetadata', setVideoData);
+            video.removeEventListener('loadedmetadata', setAudioData);
         };
-    }, []);
+    }, [currentVideoIndex]);
 
     useEffect(() => {
         if (!isSeeking.current) {
@@ -146,25 +156,61 @@ export default function Home() {
             videoRef.current.currentTime += 10;
         }
     }
+
+    const handleNext = () => {
+        setCurrentVideoIndex((prev) => (prev + 1) % videoList.length);
+        setIsPlaying(true);
+    }
+
+    const handlePrevious = () => {
+        setCurrentVideoIndex((prev) => (prev - 1 + videoList.length) % videoList.length);
+        setIsPlaying(true);
+    }
+
+    const playVideoFromList = (index: number) => {
+        setCurrentVideoIndex(index);
+        setIsPlaying(true);
+    }
  
     return (
         <>         
-            <div className="w-screen h-screen bg-[#222] flex justify-center items-center text-white box-border">
-
-                <div className="w-[800px] h-[600px] bg-[#333] rounded-lg p-[50px]">
-                    <div className="h-[80%] flex flex-col justify-center items-center">
+            <div className="w-screen h-screen bg-[#222] flex justify-center items-center text-white p-10 gap-6">
+                
+                <div className="w-[300px] h-[500px] bg-[#333] rounded-lg p-4 overflow-y-auto">
+                    <h3 className="text-xl front-bold mb-4 border-b border-gray-600 pb-2">Lista de vídeos</h3>
+                    <ul className="space-y-2">
+                        {videoList.map((video, index) => (
+                            <li
+                                key={index}
+                                onClick={() => playVideoFromList(index)}
+                                className={`p-3 rounded cursor-pointer transition-colors ${
+                                    index === currentVideoIndex ? 'bg-[#1a54d4]' : 'hover:bg-[#444] bg-[#2a2a2a]' 
+                                }`}
+                            >
+                                <p className="font-medium text-sm">{video.title}</p>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                
+                <div className="w-[800px] h-[600px] bg-[#333] rounded-lg p-8 flex flex-col justify-between">
+                    <div className="h-[75%] flex flex-col justify-center overflow-hidden relative group">
                         <video
                             ref={videoRef}
-                            src="/video.mp4"
-                            className="w-full cursor-pointer rounded-lg"
+                            src={currentVideo.src}
+                            className="w-full h-full object-contain cursor-pointer rounded-lg"
                             onTimeUpdate={handleTimeUpdate}
-                            onEnded={() => setIsPlaying(false)}
+                            onEnded={handleNext}
                             onClick={() => setIsPlaying(!isPlaying)}
+                            controls={false}
                         />
+                        <div className="absolute top-4 left-4 bg-black/60 px-3 py-1 rounded text-sm">
+                            {currentVideo.title}
+                        </div>
                     </div>
 
-                    <div className="h-[20%] flex flex-col items-center">
-                        <div className="w-full mt-[25px]">
+                    <div className="h-[20%] flex flex-col justify-end">
+                        <div className="w-full mt-4">
                             <input 
                                 type="range" 
                                 min="0"
@@ -192,13 +238,15 @@ export default function Home() {
                                     [&::-moz-range-thumb]:border-0
                                 `}
                             />
-                            <div className="flex mt-[-5px] justify-between text-[0.95rem] text-[#717577]">
+                            <div className="flex mt-[-5px] justify-between text-[0.95rem] text-gray-400">
                                 <p>{ formatTime(currentTime) }</p>
                                 <p>{ formatTime(duration) }</p>
                             </div>
                         </div>
 
-                        <div className="flex w-[calc(100%-6px)] mt-5 justify-between">
+                        <div className="flex px-4 mt-5 justify-between">
+                            
+                            <button onClick={handlePrevious} className="cursor-pointer"> <SkipBack size={20}/> </button>
                             <button onClick={seekBackward} className="cursor-pointer"> <RotateCcw size={20}/> </button>
 
                             <button onClick={() => setIsPlaying(!isPlaying)} className="bg-[#be2929] w-10 h-10 rounded-full cursor-pointer flex justify-center items-center">
@@ -206,6 +254,7 @@ export default function Home() {
                             </button>
 
                             <button onClick={seekForward} className="cursor-pointer"> <RotateCw size={20}/> </button>
+                            <button onClick={handleNext} className="cursor-pointer"> <SkipForward size={20}/> </button>
 
                             <div 
                                 className="relative flex items-center" 
